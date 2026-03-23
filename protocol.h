@@ -9,7 +9,8 @@ typedef enum
     COMMAND_READ_DATA = 4,
     COMMAND_WRITE_DATA = 5,
     COMMAND_RUN_CMD = 6,
-    COMMAND_ERROR = 7
+    COMMAND_ERROR = 7,
+    COMMAND_RESPONSE =8
 
 } Command;
 
@@ -25,11 +26,13 @@ typedef struct
 
 } Packet;
 
+int send_header(Packet *packet, int fd); // sends the first 12 bytes of the headers value
 
-int send_header(Packet * packet, int fd); //sends the first 12 bytes of the headers value
+char *recieve_bytes(int n, int fd); // function that loops through the recieve function and waits until it has recieved n bytes
 
-char * recieve_bytes(int n,int fd); // function that loops through the recieve function and waits until it has recieved n bytes
+Packet *recieve_packet(int fd); // recieves the packet, into a Packet * type
 
-Packet * assemble_packet(int fd); //assembles the packet, into a Packet * type
+int send_packet(Packet *packet, int fd); // sends the packet
 
 
+//REMEMBER TO FREE THE RECIEVED PACKET AFTER WE ARE DONE USING IT. 

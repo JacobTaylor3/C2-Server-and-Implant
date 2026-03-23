@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("<Succesfully established connection to implant>\n");
+    printf("<Succesfully established connection to implant, now waiting for HELLO...............\n");
 
 
 

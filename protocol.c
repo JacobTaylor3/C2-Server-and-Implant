@@ -77,7 +77,7 @@ char *recieve_bytes(int n, int fd)
     return start_buffer;
 }
 
-Packet *assemble_packet(int fd)
+Packet *recieve_packet(int fd) //
 {
 
     // Packet *packet = (Packet *)malloc(sizeof(Packet *));
@@ -124,4 +124,58 @@ Packet *assemble_packet(int fd)
     packet->payload = payload;
 
     return packet;
+}
+
+int send_packet(Packet *packet, int fd)
+{
+
+    int result = send_header(packet, fd);
+
+    if (result == 0)
+    {
+        printf("Error sending packet!");
+        return 0;
+    }
+
+    if (packet->payload_len == 0)
+    {
+        // we are done as there is no payload!
+        return 1;
+    }
+
+    int sent_bytes = 0;
+
+    int payload_length = packet->payload_len;
+
+    char *payload_ptr = packet->payload;
+
+    while (sent_bytes != payload_length) // if all payload bytes are sent we are finished
+
+    {
+
+        int remaining_bytes = payload_length - sent_bytes;
+        int bytes_this_call = send(fd, payload_ptr, remaining_bytes, 0);
+
+        if (bytes_this_call == -1)
+        {
+            perror("sent");
+            return 0;
+        }
+
+        sent_bytes += bytes_this_call;
+        payload_ptr = payload_ptr + bytes_this_call;
+    }
+
+    return 1;
+}
+
+void free_packet(Packet *packet)
+{
+
+    if (packet->payload_len != 0)
+    {
+        free(packet->payload);
+    }
+
+    free(packet);
 }
