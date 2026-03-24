@@ -28,7 +28,7 @@ int send_header(Packet *packet, int fd)
 
         if (bytes_this_call == -1)
         {
-            perror("sent");
+            perror("sent:");
             return 0;
         }
 
@@ -57,7 +57,7 @@ char *recieve_bytes(int n, int fd)
         if (bytes_this_call == -1)
         {
 
-            perror("recieved");
+            perror("recieved:");
             free(start_buffer);
             return NULL;
         }
@@ -65,7 +65,7 @@ char *recieve_bytes(int n, int fd)
         if (bytes_this_call == 0)
         {
 
-            printf("Connetion closed!");
+            printf("Connetion closed!\n");
             free(start_buffer);
             return NULL;
         }
@@ -86,7 +86,7 @@ Packet *recieve_packet(int fd) //
 
     if (header == NULL)
     {
-        printf("Error creating header_packet!");
+        printf("Error creating header_packet!\n");
         return NULL;
     }
 
@@ -111,7 +111,7 @@ Packet *recieve_packet(int fd) //
         if (payload == NULL)
         {
 
-            printf("Error creating payload_packet!");
+            printf("Error creating payload_packet!\n");
             return NULL;
         }
     }
@@ -133,7 +133,7 @@ int send_packet(Packet *packet, int fd)
 
     if (result == 0)
     {
-        printf("Error sending packet!");
+        printf("Error sending packet!\n");
         return 0;
     }
 
@@ -158,7 +158,7 @@ int send_packet(Packet *packet, int fd)
 
         if (bytes_this_call == -1)
         {
-            perror("sent");
+            perror("sent:");
             return 0;
         }
 
@@ -178,4 +178,45 @@ void free_packet(Packet *packet)
     }
 
     free(packet);
+}
+
+char *map_enum_to_command_type(int command)
+{
+
+    char *mappings[] = {"COMMAND_HELLO",
+                        "COMMAND_HEARTBEAT",
+                        "COMMAND_SET_SLEEP",
+                        "COMMAND_SHUTDOWN",
+                        "COMMAND_READ_DATA",
+                        "COMMAND_WRITE_DATA",
+                        "COMMAND_RUN_CMD",
+                        "COMMAND_ERROR",
+                        "COMMAND_RESPONSE"};
+
+    return mappings[command];
+}
+
+void print_packet_contents(Packet *packet)
+{
+    printf("\n+----------------------------------+\n");
+    printf("| %-32s |\n", "RECEIVED PACKET");
+    printf("+----------------------------------+\n");
+    printf("| Command: %-23s |\n", map_enum_to_command_type(packet->command_type));
+    printf("| Req ID:  %-23d |\n", packet->request_id);
+    printf("| Pay Len: %-23d |\n", packet->payload_len);
+    printf("+----------------------------------+\n");
+
+    if (packet->payload_len == 0 || packet->payload == NULL)
+    {
+        printf("| Payload: %-23s |\n", "<NONE>");
+        printf("+----------------------------------+\n\n");
+    }
+    else
+    {
+        printf("| %-32s |\n", "Payload: (see below)");
+        printf("+----------------------------------+\n");
+        printf("--- PAYLOAD BEGIN ---\n");
+        printf("%.*s\n", packet->payload_len, packet->payload);
+        printf("--- PAYLOAD END ---\n\n");
+    }
 }

@@ -5,11 +5,11 @@ TARGETS = controller implant
 
 all: clean $(TARGETS)
 
-controller: controller.c
-	$(CC) $(CFLAGS) controller.c -o controller
+controller: controller.c protocol.c
+	$(CC) $(CFLAGS) controller.c protocol.c -o controller
 
-implant: implant.c
-	$(CC) $(CFLAGS) implant.c -o implant
+implant: implant.c protocol.c
+	$(CC) $(CFLAGS) implant.c protocol.c -o implant
 
 clean:
 	rm -f $(TARGETS)

