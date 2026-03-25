@@ -38,4 +38,10 @@ void free_packet(Packet *packet);
 
 void print_packet_contents(Packet *packet);
 
+char * xor_obfuscate(char * data,int len);
+
+char * rotate_obfuscate(char * data,int len);
+
+char * rotate_deobfuscate(char *data, int len);
+
 // REMEMBER TO FREE THE RECIEVED PACKET AFTER WE ARE DONE USING IT

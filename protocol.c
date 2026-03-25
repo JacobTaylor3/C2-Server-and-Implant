@@ -9,6 +9,57 @@
 #include <string.h>
 #include <stdlib.h>
 
+static const char XOR_KEY[] = {
+    0x4A, 0x7F, 0x3C, 0x91,
+    0xB2, 0x5E, 0xD8, 0x23,
+    0x6F, 0xA4, 0x19, 0xE7,
+    0x88, 0x2D, 0x55, 0xC3};
+static const int XOR_KEY_LEN = 16;
+
+char *rotate_obfuscate(char *data, int len)
+{
+    char *result = malloc(len);
+    memcpy(result, data, len);
+
+    for (int i = 0; i < len; i++)
+    {
+
+        result[i] = ((unsigned char)result[i] << 3) | ((unsigned char)result[i] >> 5);
+    }
+
+    return result;
+}
+
+char *rotate_deobfuscate(char *data, int len)
+{
+
+    char *result = malloc(len);
+    memcpy(result, data, len);
+
+    for (int i = 0; i < len; i++)
+    {
+
+        result[i] = ((unsigned char)result[i] >> 3) | ((unsigned char)result[i] << 5);
+    }
+    return result;
+}
+
+char *xor_obfuscate(char *data, int len)
+{
+
+    char *result = malloc(len);
+    memcpy(result, data, len);
+
+    // len is length of the data
+    for (int i = 0; i < len; i++)
+    {
+        int xor_indice = i % XOR_KEY_LEN;
+        result[i] = result[i] ^ XOR_KEY[xor_indice];
+    }
+
+    return result;
+}
+
 int send_header(Packet *packet, int fd)
 {
 
@@ -19,22 +70,32 @@ int send_header(Packet *packet, int fd)
     int header_data[3] = {packet->command_type, packet->request_id, packet->payload_len};
     char *data_as_char = (char *)header_data;
 
+    char *obfuscated_xor = xor_obfuscate(data_as_char, 12);
+
+    char *obfuscated_rotated = rotate_obfuscate(obfuscated_xor, 12);
+    free(obfuscated_xor);
+
+    char *obfuscated_rotated_start = obfuscated_rotated;
+
     while (sent_bytes != HEADER_BYTES) // if 12 bytes are sent we are finished
 
     {
 
         int remaining_bytes = HEADER_BYTES - sent_bytes;
-        int bytes_this_call = send(fd, data_as_char, remaining_bytes, 0);
+        int bytes_this_call = send(fd, obfuscated_rotated, remaining_bytes, 0);
 
         if (bytes_this_call == -1)
         {
             perror("sent:");
+            free(obfuscated_rotated_start);
             return 0;
         }
 
         sent_bytes += bytes_this_call;
-        data_as_char = data_as_char + bytes_this_call;
+        obfuscated_rotated = obfuscated_rotated + bytes_this_call;
     }
+
+    free(obfuscated_rotated_start);
 
     return 1;
 }
@@ -82,13 +143,18 @@ Packet *recieve_packet(int fd) //
 
     // Packet *packet = (Packet *)malloc(sizeof(Packet *));
 
-    char *header = recieve_bytes(12, fd);
+    char *header_obfuscated = recieve_bytes(12, fd);
 
-    if (header == NULL)
+    if (header_obfuscated == NULL)
     {
         printf("Error creating header_packet!\n");
         return NULL;
     }
+
+    char *header_derotated = rotate_deobfuscate(header_obfuscated, 12);
+    char *header = xor_obfuscate(header_derotated, 12);
+    free(header_obfuscated);
+    free(header_derotated);
 
     Packet *header_packet = (Packet *)header;
 
@@ -106,14 +172,20 @@ Packet *recieve_packet(int fd) //
     else
     {
 
-        payload = recieve_bytes(payload_len, fd);
+        char *payload_obfuscated = recieve_bytes(payload_len, fd);
 
-        if (payload == NULL)
+        if (payload_obfuscated == NULL)
         {
 
             printf("Error creating payload_packet!\n");
             return NULL;
         }
+
+        char *payload_derotated = rotate_deobfuscate(payload_obfuscated, payload_len);
+        payload = xor_obfuscate(payload_derotated, payload_len);
+        free(payload_derotated);
+
+        free(payload_obfuscated);
     }
 
     Packet *packet = malloc(sizeof(Packet));
@@ -143,28 +215,38 @@ int send_packet(Packet *packet, int fd)
         return 1;
     }
 
+    // There is a payload!
+
     int sent_bytes = 0;
 
     int payload_length = packet->payload_len;
 
     char *payload_ptr = packet->payload;
 
+    char *obfuscated_payload_xor = xor_obfuscate(payload_ptr, payload_length);
+    char *obfuscated_payload_rotated = rotate_obfuscate(obfuscated_payload_xor, payload_length);
+    free(obfuscated_payload_xor);
+    char *obfuscated__payload_rotated_start = obfuscated_payload_rotated;
+
     while (sent_bytes != payload_length) // if all payload bytes are sent we are finished
 
     {
 
         int remaining_bytes = payload_length - sent_bytes;
-        int bytes_this_call = send(fd, payload_ptr, remaining_bytes, 0);
+        int bytes_this_call = send(fd, obfuscated_payload_rotated, remaining_bytes, 0);
 
         if (bytes_this_call == -1)
         {
             perror("sent:");
+            free(obfuscated__payload_rotated_start);
             return 0;
         }
 
         sent_bytes += bytes_this_call;
-        payload_ptr = payload_ptr + bytes_this_call;
+        obfuscated_payload_rotated = obfuscated_payload_rotated + bytes_this_call;
     }
+
+    free(obfuscated__payload_rotated_start);
 
     return 1;
 }
