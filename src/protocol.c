@@ -1,5 +1,4 @@
 #include "protocol.h"
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,7 +15,9 @@ static const char XOR_KEY[] = {
     0x88, 0x2D, 0x55, 0xC3};
 static const int XOR_KEY_LEN = 16;
 
-char *rotate_obfuscate(char *data, int len)
+// pass in 3 to obfuscate and 5 to deobfuscate
+
+char *rotate(char *data, int len, int shift)
 {
     char *result = malloc(len);
     memcpy(result, data, len);
@@ -24,23 +25,9 @@ char *rotate_obfuscate(char *data, int len)
     for (int i = 0; i < len; i++)
     {
 
-        result[i] = ((unsigned char)result[i] << 3) | ((unsigned char)result[i] >> 5);
+        result[i] = ((unsigned char)result[i] << shift) | ((unsigned char)result[i] >> (8 - shift));
     }
 
-    return result;
-}
-
-char *rotate_deobfuscate(char *data, int len)
-{
-
-    char *result = malloc(len);
-    memcpy(result, data, len);
-
-    for (int i = 0; i < len; i++)
-    {
-
-        result[i] = ((unsigned char)result[i] >> 3) | ((unsigned char)result[i] << 5);
-    }
     return result;
 }
 
@@ -72,7 +59,7 @@ int send_header(Packet *packet, int fd)
 
     char *obfuscated_xor = xor_obfuscate(data_as_char, 12);
 
-    char *obfuscated_rotated = rotate_obfuscate(obfuscated_xor, 12);
+    char *obfuscated_rotated = rotate(obfuscated_xor, 12, 3);
     free(obfuscated_xor);
 
     char *obfuscated_rotated_start = obfuscated_rotated;
@@ -151,7 +138,7 @@ Packet *recieve_packet(int fd) //
         return NULL;
     }
 
-    char *header_derotated = rotate_deobfuscate(header_obfuscated, 12);
+    char *header_derotated = rotate(header_obfuscated, 12, 5);
     char *header = xor_obfuscate(header_derotated, 12);
     free(header_obfuscated);
     free(header_derotated);
@@ -181,7 +168,7 @@ Packet *recieve_packet(int fd) //
             return NULL;
         }
 
-        char *payload_derotated = rotate_deobfuscate(payload_obfuscated, payload_len);
+        char *payload_derotated = rotate(payload_obfuscated, payload_len, 5);
         payload = xor_obfuscate(payload_derotated, payload_len);
         free(payload_derotated);
 
@@ -224,7 +211,7 @@ int send_packet(Packet *packet, int fd)
     char *payload_ptr = packet->payload;
 
     char *obfuscated_payload_xor = xor_obfuscate(payload_ptr, payload_length);
-    char *obfuscated_payload_rotated = rotate_obfuscate(obfuscated_payload_xor, payload_length);
+    char *obfuscated_payload_rotated = rotate(obfuscated_payload_xor, payload_length, 3);
     free(obfuscated_payload_xor);
     char *obfuscated__payload_rotated_start = obfuscated_payload_rotated;
 

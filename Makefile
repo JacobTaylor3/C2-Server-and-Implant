@@ -1,15 +1,18 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -g -O0
+CFLAGS = -Wall -Wextra -std=c11 -g -O0 -I include
 
-TARGETS = controller implant
+TARGETS = bin/controller bin/implant
 
 all: clean $(TARGETS)
 
-controller: controller.c protocol.c
-	$(CC) $(CFLAGS) controller.c protocol.c -o controller
+bin/controller: src/controller.c src/protocol.c | bin
+	$(CC) $(CFLAGS) src/controller.c src/protocol.c -o bin/controller
 
-implant: implant.c protocol.c
-	$(CC) $(CFLAGS) implant.c protocol.c -o implant
+bin/implant: src/implant.c src/protocol.c | bin
+	$(CC) $(CFLAGS) src/implant.c src/protocol.c -o bin/implant
+
+bin:
+	mkdir -p bin
 
 clean:
-	rm -f $(TARGETS)
+	rm -rf bin
