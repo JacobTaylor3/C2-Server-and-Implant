@@ -1,6 +1,4 @@
-# Reduce code duplication by using function pointers and make functions for code duplication
 
-# Add in a scraper for twitter. com with our account to obtain the ip address 
+# Dependency
 
-# change folder structure of this project as its going to get bigger 
-
+- Need the lcurl library installed for the fetching of the IP on pastebin, I have commented it out as of right now, but will implement it later.

