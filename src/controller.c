@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
         case COMMAND_WRITE_DATA:
         {
 
-            char *path = parameters_input("Enter the path to file to read: ");
+            char *path = parameters_input("Enter the path to file to write to (include the new file name in path): ");
 
             char *data = parameters_input("Enter the data to write:");
 
