@@ -7,6 +7,7 @@
 #include <string.h>
 #include "protocol.h"
 #include <stdlib.h>
+#include "controller_utils.h"
 
 void process_response(Packet *response, int request_id, int client_fd, int controller_fd)
 {
@@ -84,6 +85,8 @@ char *parameters_input(char *display_messge)
     printf(display_messge); // prompt the user
     fgets(input, sizeof(input), stdin);
     input[strcspn(input, "\n")] = '\0'; // strip the newline
+
+    flush_stdin(); // flushes the stdin input
 
     return input;
 }
