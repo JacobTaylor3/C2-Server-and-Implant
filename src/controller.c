@@ -68,6 +68,7 @@ int console_input()
 
         if ((sscanf(input_buffer, "%d", &choice) == 1) && (choice >= 1 && choice <= 6))
         {
+            flush_stdin();
             break;
         }
 
