@@ -1,9 +1,9 @@
-# Compiled output
-bin/
-*.o
-*.a
-*.so
-*.out
+# # Compiled output
+# bin/
+# *.o
+# *.a
+# *.so
+# *.out
 
 # Debug
 *.dSYM/
