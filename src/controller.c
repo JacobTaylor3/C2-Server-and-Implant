@@ -84,7 +84,7 @@ char *parameters_input(char *display_messge)
     char *input = (char *)malloc(256);
 
     printf(display_messge); // prompt the user
-    fgets(input, sizeof(input), stdin);
+    fgets(input, 256, stdin);
     input[strcspn(input, "\n")] = '\0'; // strip the newline
 
     flush_stdin(); // flushes the stdin input
@@ -189,9 +189,10 @@ int main(int argc, char *argv[])
 
             request_id++;
             Packet cmd_packet = {COMMAND_READ_DATA, request_id, strlen(path), path};
-            free(path);
 
             send_packet(&cmd_packet, client_fd);
+
+            free(path);
 
             Packet *response = recieve_packet(client_fd);
 

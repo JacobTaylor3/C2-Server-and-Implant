@@ -86,22 +86,19 @@ int send_header(Packet *packet, int fd)
 
 char *recieve_bytes(int n, int fd)
 {
+    printf("[DEBUG] receive_bytes called: waiting for %d bytes\n", n); // ← before loop
 
     int recieved_bytes = 0;
-
     char *buffer = (char *)malloc(n);
-
     char *start_buffer = buffer;
 
     while (recieved_bytes != n)
     {
-
         int remaining_bytes = n - recieved_bytes;
         int bytes_this_call = recv(fd, buffer, remaining_bytes, 0);
 
         if (bytes_this_call == -1)
         {
-
             perror("recieved:");
             free(start_buffer);
             return NULL;
@@ -109,16 +106,19 @@ char *recieve_bytes(int n, int fd)
 
         if (bytes_this_call == 0)
         {
-
-            printf("Connetion closed!\n");
+            printf("Connection closed!\n");
             free(start_buffer);
             return NULL;
         }
 
         recieved_bytes += bytes_this_call;
         buffer = buffer + bytes_this_call;
+
+        printf("[DEBUG] got %d bytes this call\n", bytes_this_call); // ← inside loop
+        printf("[DEBUG] total so far %d / %d\n", recieved_bytes, n); // ← inside loop
     }
 
+    printf("[DEBUG] receive_bytes complete: got all %d bytes\n", n); // ← after loop
     return start_buffer;
 }
 
@@ -145,6 +145,11 @@ Packet *recieve_packet(int fd) //
     Command command_type = header_packet->command_type;
     int request_id = header_packet->request_id;
     int payload_len = header_packet->payload_len;
+
+    printf("[DEBUG] command_type = %d\n", command_type);
+    printf("[DEBUG] request_id = %d\n", request_id);
+    printf("[DEBUG] payload_len = %d\n", payload_len);
+    fflush(stdout); // ← forces output to print immediately on Windows!
     char *payload;
     free(header);
 
