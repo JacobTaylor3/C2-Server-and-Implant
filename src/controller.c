@@ -50,13 +50,10 @@ void display_prompt()
 
 int console_input()
 {
-
     int choice;
     while (1)
     {
-
         char input_buffer[32];
-
         display_prompt();
 
         if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
@@ -66,29 +63,36 @@ int console_input()
             continue;
         }
 
+        // only flush if newline wasn't consumed by fgets
+        if (strchr(input_buffer, '\n') == NULL)
+        {
+            flush_stdin(); // ← only called when buffer was too small
+        }
+
         if ((sscanf(input_buffer, "%d", &choice) == 1) && (choice >= 1 && choice <= 6))
         {
-            flush_stdin();
             break;
         }
 
-        printf("INVALID INPUT! Please enter an interger from 1-6. \n");
+        printf("INVALID INPUT! Please enter an integer from 1-6. \n");
     }
 
     return choice;
 }
 
-char *parameters_input(char *display_messge)
+char *parameters_input(char *display_message)
 {
-
-    char *input = (char *)malloc(256);
-
-    printf(display_messge); // prompt the user
+    char *input = malloc(256);
+    printf(display_message);
     fgets(input, 256, stdin);
-    input[strcspn(input, "\n")] = '\0'; // strip the newline
 
-    flush_stdin(); // flushes the stdin input
+    // only flush if newline wasn't consumed
+    if (strchr(input, '\n') == NULL)
+    {
+        flush_stdin();
+    }
 
+    input[strcspn(input, "\n")] = '\0';
     return input;
 }
 
@@ -169,11 +173,18 @@ int main(int argc, char *argv[])
         case COMMAND_HEARTBEAT:
         {
 
+            printf("[DEBUG] HEARTBEAT case entered\n");
+            fflush(stdout);
+
             request_id++;
             Packet heartbeat_packet = {COMMAND_HEARTBEAT, request_id, 0, 0};
 
+            printf("[DEBUG] calling send_packet\n");
+            fflush(stdout);
             send_packet(&heartbeat_packet, client_fd);
 
+            printf("[DEBUG] send_packet returned\n");
+            fflush(stdout);
             Packet *response = recieve_packet(client_fd);
 
             process_response(response, request_id, client_fd, controller_fd);

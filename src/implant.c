@@ -23,7 +23,7 @@ int connect_to_controller()
     controller_ip_structure.sin_family = AF_INET;
     controller_ip_structure.sin_port = htons(8080);
 
-    const char *CONTROLLER_IP_ADDR = "192.168.30.10";
+    const char *CONTROLLER_IP_ADDR = "127.0.0.1";
 
     if (inet_pton(AF_INET, CONTROLLER_IP_ADDR, &controller_ip_structure.sin_addr) <= 0)
     {
