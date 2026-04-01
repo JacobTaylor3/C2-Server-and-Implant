@@ -46,27 +46,35 @@ char *xor_obfuscate(char *data, int len)
 
 int send_header(Packet *packet, int fd)
 {
+    printf("[DEBUG] send_header called cmd=%d req=%d paylen=%d\n",
+           packet->command_type, packet->request_id, packet->payload_len);
+    fflush(stdout);
 
     const int HEADER_BYTES = 12;
-
     int sent_bytes = 0;
 
     int header_data[3] = {packet->command_type, packet->request_id, packet->payload_len};
     char *data_as_char = (char *)header_data;
 
     char *obfuscated_xor = xor_obfuscate(data_as_char, 12);
+    printf("[DEBUG] xor done\n");
+    fflush(stdout);
 
     char *obfuscated_rotated = rotate(obfuscated_xor, 12, 3);
+    printf("[DEBUG] rotate done\n");
+    fflush(stdout);
+
     free(obfuscated_xor);
 
     char *obfuscated_rotated_start = obfuscated_rotated;
 
-    while (sent_bytes != HEADER_BYTES) // if 12 bytes are sent we are finished
-
+    while (sent_bytes != HEADER_BYTES)
     {
-
         int remaining_bytes = HEADER_BYTES - sent_bytes;
         int bytes_this_call = send(fd, obfuscated_rotated, remaining_bytes, 0);
+
+        printf("[DEBUG] send() returned %d\n", bytes_this_call);
+        fflush(stdout);
 
         if (bytes_this_call == -1)
         {
@@ -79,8 +87,9 @@ int send_header(Packet *packet, int fd)
         obfuscated_rotated = obfuscated_rotated + bytes_this_call;
     }
 
+    printf("[DEBUG] send_header complete\n");
+    fflush(stdout);
     free(obfuscated_rotated_start);
-
     return 1;
 }
 
