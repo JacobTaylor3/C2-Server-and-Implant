@@ -46,6 +46,9 @@ char *xor_obfuscate(char *data, int len)
 
 int send_header(Packet *packet, int fd)
 {
+    printf("[DEBUG] send_packet called\n");
+    fflush(stdout);
+
     printf("[DEBUG] send_header called cmd=%d req=%d paylen=%d\n",
            packet->command_type, packet->request_id, packet->payload_len);
     fflush(stdout);
